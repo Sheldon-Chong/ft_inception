@@ -9,7 +9,7 @@ sed -i "s/localhost/mariadb/" wp-config.php
 
 if ! wp core is-installed; then
   wp core install \
-    --url="${WP_SITE_URL}" \
+    --url="${WP_DOMAIN_NAME}" \
     --title="${WP_SITE_TITLE}" \
     --admin_user="${WP_ADMIN_NAME}" \
     --admin_password="${WP_USER_PASSWORD}" \

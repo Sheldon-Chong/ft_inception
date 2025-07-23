@@ -1,33 +1,39 @@
+networks:
+  inception:
+    name: inception
 
 services:
   mariadb:
     build: requirements/mariadb
     container_name: mariadb
-    ports:
-      - "3306:3306" # Expose MariaDB port to host (3306 is the default port used by MariaDB and MySQL database servers.)
-    environment:
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_USER_PASSWORD=${DB_USER_PASSWORD}
-      - ROOT_PASSWORD=${ROOT_PASSWORD}
+    # ports:
+      # - "3306:3306" # Expose MariaDB port to host (3306 is the default port used by MariaDB and MySQL database servers.)
+    env_file: ".env"
     volumes:
       - ./requirements/mariadb:/docker-entrypoint-initdb.d
+    networks: [inception]
     tty: true
+    restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   wordpress:
     build: requirements/wordpress
     container_name: wordpress
     ports:
       - "8000:8000"
-    environment:
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_USER_PASSWORD=${DB_USER_PASSWORD}
-      - ROOT_PASSWORD=${ROOT_PASSWORD}
-    
-  # nginx:
-  #   build: requirements/nginx
-  #   container_name: nginx
-  #   ports:
-  #     - "8080:80" # Host port 80 → Container port 80
-  
+    env_file: ".env"
+    networks: [inception]
+    depends_on: 
+      mariadb:
+        condition: service_healthy
+    restart: always
+  nginx:
+    build: requirements/nginx
+    container_name: nginx
+    ports:
+      - "443:443" # Only expose HTTPS
+
 

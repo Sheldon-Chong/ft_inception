@@ -6,6 +6,7 @@ eval "cat <<EOF >db1.sql
 $(cat init_database.sql)
 EOF"
 
+
 mysql < db1.sql
 
 # Shuts down the MariaDB server using the mysqladmin tool.

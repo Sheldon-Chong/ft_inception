@@ -1,25 +1,25 @@
-FROM debian:latest
+FROM debian:bullseye
 
 # Update package list and install nginx
-RUN apt update && apt upgrade -y && apt install -y nginx
+RUN apt update && \
+    apt upgrade -y && \
+    apt install -y nginx
 
 # Create necessary directories
 RUN mkdir -p /var/www/html
 
-# Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copy index.html
 COPY index.html /var/www/html/index.html
-
-# Set proper permissions
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html
 
-# Expose port 80
-EXPOSE 80
+# NOT COPIED CORRECTLY, maybe must run in makefile
+COPY ./tools/dhparam.pem /dhparam.pem
+COPY ./tools/private.key /private.key
+COPY ./tools/self_signed_certificate.pem /self_signed_certificate.pem
 
-# Start nginx in foreground
+EXPOSE 80
+EXPOSE 443
 CMD ["nginx", "-g", "daemon off;"] 
 
 
