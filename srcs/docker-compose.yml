@@ -22,8 +22,6 @@ services:
   wordpress:
     build: requirements/wordpress
     container_name: wordpress
-    ports:
-      - "8000:8000"
     env_file: ".env"
     networks: [inception]
     depends_on: 
@@ -33,6 +31,9 @@ services:
   nginx:
     build: requirements/nginx
     container_name: nginx
+    networks: [inception]
+    depends_on: 
+      - wordpress
     ports:
       - "443:443" # Only expose HTTPS
 
