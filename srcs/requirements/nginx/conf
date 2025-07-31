@@ -3,43 +3,61 @@ events {
 }
 
 http {
+    
     include /etc/nginx/mime.types;
     
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    
+
     # Basic settings
     tcp_nodelay on;
     keepalive_timeout 65;
     
+
     ssl_certificate     /self_signed_certificate.pem;
     ssl_certificate_key /private.key;
     ssl_dhparam         /dhparam.pem;
 
+    # SSL/TLS protocol versions are allowed for HTTPS connections.
+    ssl_protocols TLSv1.2 TLSv1.3;
+
     # force http traffic to use https, since 80 is the port that listens for "http"
     server {
         listen 80;
-        server_name localhost;
+        server_name shechong.42.fr;
         return 301 https://$host$request_uri;
     }
+
+
+
 
 
     server {
         listen 443 ssl;
         listen [::]:443 ssl;
 
-        server_name localhost;
+        server_name shechong.42.fr;
 
         ssl_certificate     /self_signed_certificate.pem;
         ssl_certificate_key /private.key;
         ssl_dhparam         /dhparam.pem;
 
-        # root /var/www/html;
-        # index index.html index.htm;
+        root /var/www/html;
+		index index.php;
 
+        
         location / {
-            proxy_pass http://wordpress:8000;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
+            try_files $uri $uri/ /index.php?$args;
         }
+
+        location ~ \.php$ {
+            fastcgi_pass wordpress:9000;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+        }
+
     }
 }

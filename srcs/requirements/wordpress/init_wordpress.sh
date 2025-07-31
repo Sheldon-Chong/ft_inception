@@ -1,5 +1,8 @@
 #!/bin/bash
 
+cd /var/www/html
+
+
 cp wp-config-sample.php wp-config.php
 
 sed -i "s/database_name_here/${DB_NAME}/" wp-config.php
@@ -12,9 +15,12 @@ if ! wp core is-installed; then
     --url="${WP_DOMAIN_NAME}" \
     --title="${WP_SITE_TITLE}" \
     --admin_user="${WP_ADMIN_NAME}" \
-    --admin_password="${WP_USER_PASSWORD}" \
+    --admin_password="${WP_ADMIN_PASSWORD}" \
     --admin_email="${WP_ADMIN_EMAIL}"
 fi
 
-php -S 0.0.0.0:8000 -t /srv/www
+wp user create "${WP_USER_NAME}" "${WP_USER_EMAIL}" \
+  --user_pass="${WP_USER_PASSWORD}" \
+  --role=author
 
+exec php-fpm7.4 -F

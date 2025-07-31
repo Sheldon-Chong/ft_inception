@@ -6,16 +6,14 @@ services:
   mariadb:
     build: requirements/mariadb
     container_name: mariadb
-    # ports:
-      # - "3306:3306" # Expose MariaDB port to host (3306 is the default port used by MariaDB and MySQL database servers.)
     env_file: ".env"
     volumes:
-      - ./requirements/mariadb:/docker-entrypoint-initdb.d
-    networks: [inception]
+      - mariadb:/var/lib/mysql
+    networks: [ inception ]
     tty: true
     restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${ROOT_PASSWORD}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${ROOT_PASSWORD}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,18 +21,43 @@ services:
     build: requirements/wordpress
     container_name: wordpress
     env_file: ".env"
-    networks: [inception]
-    depends_on: 
+    networks: [ inception ]
+    volumes:
+      - wordpress:/var/www/html
+    restart: always
+
+    depends_on:
       mariadb:
         condition: service_healthy
-    restart: always
+
+    healthcheck:
+      test: ["CMD-SHELL", "service php7.4-fpm status | grep running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   nginx:
     build: requirements/nginx
     container_name: nginx
-    networks: [inception]
-    depends_on: 
-      - wordpress
+    networks: [ inception ]
+    env_file: ".env"
+    depends_on:
+      wordpress:
+        condition: service_healthy
     ports:
       - "443:443" # Only expose HTTPS
+    volumes:
+      - wordpress:/var/www/html
 
-
+volumes:
+  mariadb:
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/mariadb
+  wordpress:
+    driver_opts:
+      type: none
+      o: bind
+      device: ${HOME}/data/wordpress
+      
+    
