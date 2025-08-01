@@ -34,7 +34,7 @@ WORKDIR /var/www/html
 RUN mkdir -p /var/log && chown -R www-data:www-data /var/log
 RUN mkdir -p /run/php && chown -R www-data:www-data /run/php
 
-COPY init_wordpress.sh /init_wordpress.sh 
+COPY ./tools/init_wordpress.sh /init_wordpress.sh 
 RUN chmod +x /init_wordpress.sh
 
 # RUN sed -i "s/^pm\.max_children\s*=.*/pm.max_children = 30/" /etc/php/7.4/fpm/pool.d/www.conf

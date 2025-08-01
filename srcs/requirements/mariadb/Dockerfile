@@ -7,8 +7,8 @@ RUN apt update && apt upgrade -y && \
     rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /run/mysqld && chown mysql:mysql /run/mysqld
-COPY init_maria_db.sh /init_maria_db.sh
-COPY init_database.sql /init_database.sql
+COPY ./tools/init_maria_db.sh /init_maria_db.sh
+COPY ./tools/init_database.sql /init_database.sql
 
 # set permisiosn
 RUN chmod +x /init_maria_db.sh
