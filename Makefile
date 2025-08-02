@@ -1,28 +1,43 @@
+# ----- COLORS ------
+RESET   = \033[0m
+BOLD    = \033[1m
+RED     = \033[31m
+GREEN   = \033[32m
+YELLOW  = \033[33m
+BLUE    = \033[34m
+MAGENTA = \033[35m
+CYAN    = \033[36m
+WHITE   = \033[37m
+
+
+
 BITS				= 2048
 CERTS_DIR			= ./srcs/requirements/nginx/tools
-DOMAIN_NAME			= my_domain
-DOCKER_COMPOSE_PATH = docker-compose.yml
-NAME 				= Inception
+DOCKER_COMPOSE_FILE = ./srcs/docker-compose.yml
+DOMAIN_NAME			= shechong.42.fr
+NAME 				= inception
 
 HOME_DIR := $(shell echo $$HOME)
 DATA_DIR = $(HOME_DIR)/data
 
-# ----- .pem (Privacy Enhanced Mail) format ------
-# A .pem file is a common format for cryptographic keys and certificates.
-# mostly used for SSL/TLS certificates and keys, in web servers, mail servers, VPNs, etc.
+
+# ----- CERTIFICATE ------
 # All the below files use the .pem format
+# A .pem file is a common format for SSL/TLS keys and certificates. 
 
-# Certificate Signing Request file, which contains info about the person/organization/server requesting the certificate and is used to generate the SSL certificate.
-CSR_PATH		=$(CERTS_DIR)/certificate_signing_request.csr
-
-# .key file is used by the server to secure connection
-KEY_PATH		=$(CERTS_DIR)/private.key
+# Certificate Signing Request file, which contains info about the person/organization/server requesting the certificate and 
+# Is passed to a function to generate an SSL certificate.
+CSR_PATH	 = $(CERTS_DIR)/certificate_signing_request.csr
 
 # self-signed certificate file used by the server to prove its identity to clients.
-PEM_PATH		=$(CERTS_DIR)/self_signed_certificate.pem
+CERT_PATH	 = $(CERTS_DIR)/self_signed_certificate.pem
 
-# Diffie-Hellman parameter file, which is used to enable secure key exchange for SSL/TLS connections.
-DHPARAM_PATH	=$(CERTS_DIR)/dhparam.pem
+# .key file is used by the server to secure connection
+KEY_PATH	 = $(CERTS_DIR)/private.key
+
+# Diffie-Hellman parameter file
+# is used to enable secure key exchange for SSL/TLS connections.
+DHPARAM_PATH = $(CERTS_DIR)/dhparam.pem
 
 
 # ------ SUBJECT ------
@@ -39,19 +54,26 @@ SUBJ = $(COUNTRY_KEY)=MY$(STATE_KEY)=Selangor$(LOCALITY_KEY)=SungaiBuloh$(ORG_KE
 
 all: $(NAME)
 
-$(NAME): generate_certificates
+$(NAME): prepare_dir
 	@docker compose \
-		--file srcs/$(DOCKER_COMPOSE_PATH) \
+		--file $(DOCKER_COMPOSE_FILE) \
 		--project-name inception \
 		up \
 			--build \
 			--detach
+	@echo "$(GREEN)$(NAME) is runnng$(RESET)..."
+	@echo "Visit $(GREEN)https://$(DOMAIN_NAME)$(RESET)"
+
+
+prepare_dir: generate_certificates
+	@mkdir --parents $(DATA_DIR)/mariadb
+	@mkdir --parents $(DATA_DIR)/wordpress
 
 generate_certificates:
 	@if [ ! -f $(DHPARAM_PATH) ] || \
-		[ ! -f $(PEM_PATH) ] || \
+		[ ! -f $(CERT_PATH) ] || \
 		[ ! -f $(KEY_PATH) ]; then \
-		rm -f $(DHPARAM_PATH) $(PEM_PATH) $(KEY_PATH) $(CSR_PATH);\
+		rm -f $(DHPARAM_PATH) $(CERT_PATH) $(KEY_PATH) $(CSR_PATH);\
 		\
 		\
 		# Generate Diffie-Hellman parameters (DHPARAM) file using OpenSSL\
@@ -60,39 +82,46 @@ generate_certificates:
 		\
 		\
 		# Create an SSL/TLS using "openSSL req" -- \
-		# 		Handles certificate requests and creation of private keys -- \
-		# 		create an SSL/TLS certificate using RSA algorithm with the specified no. of bits \
-		# 		nodes ("no DES" (Data Encryption Standard)) tells OpenSSL that this key can be accessed without a passphrase, so that automated services (E.g. web servers) can access the key without manual intervention.\
+		# 		Uses RSA algorithm with the specified no. of bits \
+		# 		nodes ("no DES" (Data Encryption Standard)) makes it such that this key can be accessed without a passphrase, \
+		#		This is so that automated services (E.g. web servers) can access the key without manual intervention.\
 		openssl req \
 			-new \
 			-newkey rsa:$(BITS)	\
 			-nodes \
-			-keyout ${KEY_PATH} \
-			-out ${CSR_PATH} \
-			-subj "${SUBJ}"; \
+			-keyout	${KEY_PATH} \
+			-out 	${CSR_PATH} \
+			-subj	"${SUBJ}"; \
 		\
 		\
 		# Generate self-signed cert using "openSSL x509" -- \
-		# 		Manages X.509 certificates (the standard for SSL/TLS certificates) \
-		# 		Generate a self-signed certificate from the CSR_PATH and private key \
+		# 		Inputs include the CSR_PATH and private key \
 		openssl x509 \
 			-req \
-			-days 3650 \
-			-in ${CSR_PATH} \
+			-days 	 3650 \
+			-in 	 ${CSR_PATH} \
 			-signkey ${KEY_PATH} \
-			-out ${PEM_PATH}; \
+			-out 	 ${CERT_PATH}; \
 		chmod u=rw,go= ${KEY_PATH}; \
-		chmod u=rw,go=r ${PEM_PATH}; \
+		chmod u=rw,go=r ${CERT_PATH}; \
 		chmod u=rw,go=r ${DHPARAM_PATH}; \
 	fi
 
-re: fclean all
+stop:
+	docker compose --file $(DOCKER_COMPOSE_FILE) --project-name $(NAME) down
 
+
+# deletes volumes
 fclean: clean
-    @rm -rf $(DATA_DIR)/mariadb
-    @rm -rf $(DATA_DIR)/wordpress
+	@# delete volumes
+	@sudo rm -rf $(DATA_DIR)
+	@echo "$(GREEN)mariadb and wordpress volumes have been succesfully deleted from $(DATA_DIR)$(RESET)"
 
+# simply shuts down the containers, but data is retained
 clean:
-	@sudo docker compose -f srcs/$(DOCKER_COMPOSE_FILE) -v down
+	@sudo docker compose --file $(DOCKER_COMPOSE_FILE) -v down
+	@docker rm -f mariadb wordpress nginx
+
+re: fclean all
 
 .PHONY = generate_certificates re clean fclean 
